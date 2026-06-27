@@ -1,0 +1,30 @@
+{
+  "name": "ruknbimviwer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "postinstall": "node -e \"const fs = require('fs'); if (!fs.existsSync('public')) { fs.mkdirSync('public'); } fs.copyFileSync('node_modules/web-ifc/web-ifc.wasm', 'public/web-ifc.wasm'); fs.copyFileSync('node_modules/@thatopen/fragments/dist/Worker/worker.mjs', 'public/worker.mjs');\" && node scripts/patch-thatopen-keywords.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/three": "^0.185.0",
+    "esbuild": "^0.28.1",
+    "rollup": "^4.62.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0"
+  },
+  "dependencies": {
+    "@thatopen/components": "^3.2.0",
+    "@thatopen/components-front": "^3.2.0",
+    "@thatopen/ui": "^3.2.0",
+    "@thatopen/ui-obc": "^3.2.1",
+    "three": "^0.175.0",
+    "web-ifc": "^0.0.77"
+  }
+}

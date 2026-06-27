@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Error Capturing Overlay -->
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        const errorDiv = document.createElement('div');
+        Object.assign(errorDiv.style, {
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(10, 5, 20, 0.95)',
+          color: '#ff4081',
+          padding: '40px',
+          fontFamily: 'monospace',
+          zIndex: '999999',
+          overflow: 'auto',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          boxSizing: 'border-box'
+        });
+        
+        errorDiv.innerHTML = `
+          <h2 style="color: #ffeb3b; margin-top: 0; margin-bottom: 20px; font-family: sans-serif;">🚨 Client-Side Syntax Error Captured</h2>
+          <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <strong>Message:</strong> ${message}<br>
+            <strong>Source File:</strong> <a href="${source}" target="_blank" style="color: #00e5ff; text-decoration: underline;">${source}</a><br>
+            <strong>Line:</strong> ${lineno} | <strong>Column:</strong> ${colno}<br><br>
+            <strong>Stack Trace:</strong>
+            <pre style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 5px; margin-top: 10px; border: 1px solid rgba(255,64,129,0.2); overflow-x: auto;">${error && error.stack ? error.stack : 'No stack trace available'}</pre>
+          </div>
+        `;
+        document.body.appendChild(errorDiv);
+        return false;
+      };
+      
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorDiv = document.createElement('div');
+        Object.assign(errorDiv.style, {
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(10, 5, 20, 0.95)',
+          color: '#ffeb3b',
+          padding: '40px',
+          fontFamily: 'monospace',
+          zIndex: '999999',
+          overflow: 'auto',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          boxSizing: 'border-box'
+        });
+        
+        errorDiv.innerHTML = `
+          <h2 style="color: #ff4081; margin-top: 0; margin-bottom: 20px; font-family: sans-serif;">🚨 Unhandled Promise Rejection Captured</h2>
+          <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <strong>Reason:</strong> ${event.reason}<br>
+            <strong>Stack Trace:</strong>
+            <pre style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 5px; margin-top: 10px; border: 1px solid rgba(255,235,59,0.2); overflow-x: auto;">${event.reason && event.reason.stack ? event.reason.stack : 'No stack trace available'}</pre>
+          </div>
+        `;
+        document.body.appendChild(errorDiv);
+      });
+    </script>
+    
+    <!-- Console Log Capturer Overlay -->
+    <script>
+      (function() {
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function addLogToUI(type, args) {
+          const msg = Array.from(args).map(arg => {
+            if (typeof arg === 'object' && arg !== null) {
+              try { return JSON.stringify(arg); } catch (e) { return String(arg); }
+            }
+            return String(arg);
+          }).join(' ');
+          
+          let consoleEl = document.getElementById('debug-console-overlay');
+          if (!consoleEl) {
+            consoleEl = document.createElement('div');
+            consoleEl.id = 'debug-console-overlay';
+            Object.assign(consoleEl.style, {
+              position: 'fixed',
+              bottom: '20px',
+              left: '20px',
+              width: '350px',
+              height: '180px',
+              background: 'rgba(10, 5, 20, 0.9)',
+              color: '#00e5ff',
+              border: '1px solid #7c4dff',
+              borderRadius: '8px',
+              padding: '10px',
+              fontFamily: 'monospace',
+              fontSize: '10px',
+              overflowY: 'auto',
+              zIndex: '99999',
+              pointerEvents: 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            });
+            document.body.appendChild(consoleEl);
+          }
+          
+          const line = document.createElement('div');
+          line.style.wordBreak = 'break-all';
+          if (type === 'warn') {
+            line.style.color = '#ffeb3b';
+            line.innerHTML = `⚠️ ${msg}`;
+          } else if (type === 'error') {
+            line.style.color = '#ff4081';
+            line.innerHTML = `❌ ${msg}`;
+          } else {
+            line.innerHTML = `🔹 ${msg}`;
+          }
+          consoleEl.appendChild(line);
+          consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        console.log = function() {
+          originalLog.apply(console, arguments);
+          addLogToUI('log', arguments);
+        };
+        console.warn = function() {
+          originalWarn.apply(console, arguments);
+          addLogToUI('warn', arguments);
+        };
+        console.error = function() {
+          originalError.apply(console, arguments);
+          addLogToUI('error', arguments);
+        };
+      })();
+    </script>
+    
+    <!-- SEO Optimization -->
+    <title>RUKNBIM — Experimental IFC Viewer & AI BIM Assistant</title>
+    <meta name="description" content="RUKNBIM is an advanced experimental 3D IFC BIM model viewer powered by WebGL/WebGPU and an in-browser AI Assistant." />
+    
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome 6.5.1 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  </head>
+  <body>
+    <!-- Main Application Shell -->
+    <div id="app" class="app-container">
+      <!-- 3D Canvas Host -->
+      <div id="viewer-container" class="viewer-viewport"></div>
+    </div>
+    
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

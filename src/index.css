@@ -1,0 +1,185 @@
+/* RUKNBIM Core Design System */
+
+:root {
+  /* Typography */
+  --font-title: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  /* Color Palette (RUKN BIM — Refined Navy on Warm Cream) */
+  --primary-purple: #1f3a6e;   /* signature navy (kept name for back-compat) */
+  --primary-indigo: #142a55;   /* deepest navy */
+  --primary-violet: #4a6fa5;   /* soft muted blue */
+  --accent-pink:    #c9a876;   /* warm bronze accent */
+  --accent-cyan:    #7ea3cf;   /* dusty sky */
+
+  /* Warm Cream Surfaces */
+  --bg-app: #ede5d4;
+  --bg-panel: rgba(252, 249, 242, 0.88);
+  --bg-hover: rgba(31, 58, 110, 0.06);
+  --bg-active: rgba(31, 58, 110, 0.14);
+
+  /* Text Colors */
+  --text-main: #0f1d36;
+  --text-secondary: #4b5b75;
+  --text-muted: #8a93a4;
+  --text-bright: #ffffff;
+
+  /* Borders & Shadows */
+  --border-color: rgba(20, 42, 85, 0.12);
+  --border-glow: rgba(31, 58, 110, 0.28);
+
+  /* Glassmorphic Foundation (light variant) */
+  --glass-bg: rgba(252, 249, 242, 0.78);
+  --glass-border: rgba(20, 42, 85, 0.10);
+  --glass-border-hover: rgba(31, 58, 110, 0.28);
+  --glass-shadow: 0 10px 30px -8px rgba(20, 42, 85, 0.18);
+  --glass-backdrop-blur: blur(20px) saturate(160%);
+  
+  /* Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* Gradients */
+  --purple-gradient: linear-gradient(135deg, var(--primary-indigo) 0%, var(--primary-purple) 100%);
+  --rainbow-gradient: linear-gradient(135deg, var(--primary-indigo) 0%, var(--primary-purple) 60%, var(--accent-pink) 100%);
+  --glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 100%);
+  
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Base Resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App Layout */
+.app-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 3D Viewport */
+.viewer-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  outline: none;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  outline: none;
+}
+
+/* Core Glassmorphism Utility */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop-blur);
+  -webkit-backdrop-filter: var(--glass-backdrop-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  transition: border-color var(--transition-normal),
+              box-shadow var(--transition-normal),
+              opacity var(--transition-normal),
+              filter var(--transition-normal);
+  /* Idle: recede so the 3D model is the visual focus.
+     Hover (or when something inside has keyboard focus): pop forward. */
+  opacity: 0.35;
+  filter: saturate(0.85);
+}
+
+.glass-panel:hover,
+.glass-panel:focus-within,
+.glass-panel.always-visible {
+  opacity: 1;
+  filter: none;
+  border-color: var(--glass-border-hover);
+}
+
+/* Interactive Elements Design */
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background: var(--purple-gradient);
+  color: var(--text-bright);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-title);
+  font-weight: 600;
+  box-shadow: 0 6px 20px -6px rgba(20, 42, 85, 0.45);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -8px rgba(20, 42, 85, 0.55);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 64, 175, 0.05);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.35);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.6);
+}
+
+/* Typography Helpers */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-bright);
+}
