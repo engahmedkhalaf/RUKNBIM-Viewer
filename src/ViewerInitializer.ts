@@ -17,7 +17,17 @@ export class ViewerInitializer {
     const world = worlds.create<OBC.ShadowedScene, OBC.OrthoPerspectiveCamera, OBCF.PostproductionRenderer>();
 
     world.scene = new OBC.ShadowedScene(components);
-    world.renderer = new OBCF.PostproductionRenderer(components, container);
+    
+    // Create PostproductionRenderer with high-quality parameters (antialias, high-precision, high-performance)
+    world.renderer = new OBCF.PostproductionRenderer(components, container, {
+      antialias: true,
+      powerPreference: "high-performance",
+      precision: "highp",
+    });
+    
+    // Set device pixel ratio to match local screen resolution (capped at 2.0 to balance performance and sharp visual quality)
+    world.renderer.three.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
     world.camera = new OBC.OrthoPerspectiveCamera(components);
 
     // Initializing components framework
