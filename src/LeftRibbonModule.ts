@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as OBC from "@thatopen/components";
 import type { IFCViewer } from "./IFCViewer";
 
 type RibbonButton = {
@@ -448,25 +449,78 @@ export class LeftRibbonModule {
   }
 
   private buildSettingsPanel(body: HTMLDivElement): void {
+    const scene = (this.viewer.world as any).scene;
+    const renderer = (this.viewer.world as any).renderer;
+    const grids = this.viewer.components.get(OBC.Grids) as any;
+    const grid = grids.list.get(this.viewer.world.uuid);
+
+    const isGridVisible = grid ? grid.visible : true;
+    const isShadowsEnabled = scene ? scene.shadowsEnabled : true;
+    const isPostEnabled = renderer?.postproduction ? renderer.postproduction.enabled : true;
+    const isOutlinesEnabled = renderer?.postproduction ? renderer.postproduction.outlinesEnabled : true;
+
     body.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 16px;">
         <div>
           <label style="display: block; font-size: 11px; color: var(--text-secondary); font-family: var(--font-title); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;">BACKGROUND</label>
           <input type="color" id="settings-bg" value="#ede5d4" style="width: 100%; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: white; cursor: pointer;" />
         </div>
-        <div>
-          <label style="display: block; font-size: 11px; color: var(--text-secondary); font-family: var(--font-title); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;">GRID</label>
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-main);">
-            <input type="checkbox" id="settings-grid" checked style="accent-color: var(--primary-purple);" />
-            Show grid
+
+        <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <label style="display: block; font-size: 11px; color: var(--text-secondary); font-family: var(--font-title); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;">RENDERER SETTINGS</label>
+          
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-main); user-select: none;">
+            <input type="checkbox" id="settings-grid" ${isGridVisible ? "checked" : ""} style="accent-color: var(--primary-purple);" />
+            Show Grid
+          </label>
+          
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-main); user-select: none;">
+            <input type="checkbox" id="settings-shadows" ${isShadowsEnabled ? "checked" : ""} style="accent-color: var(--primary-purple);" />
+            Enable Shadows
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-main); user-select: none;">
+            <input type="checkbox" id="settings-post" ${isPostEnabled ? "checked" : ""} style="accent-color: var(--primary-purple);" />
+            Enable Postproduction
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-main); user-select: none;">
+            <input type="checkbox" id="settings-outlines" ${isOutlinesEnabled ? "checked" : ""} style="accent-color: var(--primary-purple);" />
+            Render Outlines
           </label>
         </div>
       </div>
     `;
+
     const bg = body.querySelector("#settings-bg") as HTMLInputElement;
     bg.addEventListener("input", () => {
-      const scene = (this.viewer.world as any).scene?.three;
-      if (scene) scene.background = new THREE.Color(bg.value);
+      if (scene?.three) scene.three.background = new THREE.Color(bg.value);
+    });
+
+    const gridCheckbox = body.querySelector("#settings-grid") as HTMLInputElement;
+    gridCheckbox.addEventListener("change", () => {
+      if (grid) grid.visible = gridCheckbox.checked;
+    });
+
+    const shadowsCheckbox = body.querySelector("#settings-shadows") as HTMLInputElement;
+    shadowsCheckbox.addEventListener("change", () => {
+      if (scene) {
+        scene.shadowsEnabled = shadowsCheckbox.checked;
+      }
+    });
+
+    const postCheckbox = body.querySelector("#settings-post") as HTMLInputElement;
+    postCheckbox.addEventListener("change", () => {
+      if (renderer?.postproduction) {
+        renderer.postproduction.enabled = postCheckbox.checked;
+      }
+    });
+
+    const outlinesCheckbox = body.querySelector("#settings-outlines") as HTMLInputElement;
+    outlinesCheckbox.addEventListener("change", () => {
+      if (renderer?.postproduction) {
+        renderer.postproduction.outlinesEnabled = outlinesCheckbox.checked;
+      }
     });
   }
 
