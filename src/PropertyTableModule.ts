@@ -18,7 +18,7 @@ interface TableRowData {
 
 type ColumnKey = keyof TableRowData;
 
-function extractBIMData(id: number, item: any): TableRowData {
+function extractBIMData(id: number, item: any, properties: any, elementStoreyMap: Map<number, string>): TableRowData {
   const category = item.category || "Unknown";
   
   let guid = item.guid || "N/A";
@@ -31,7 +31,7 @@ function extractBIMData(id: number, item: any): TableRowData {
   let netArea = 0;
   let grossVolume = 0;
   let netVolume = 0;
-  let level = "N/A";
+  let level = elementStoreyMap.get(id) || "N/A";
   
   const rawData = item.data || item || {};
   
@@ -67,66 +67,124 @@ function extractBIMData(id: number, item: any): TableRowData {
     }
   }
 
-  // 2. Recursive scanner to find properties inside nested objects/arrays
-  const scan = (obj: any) => {
-    if (!obj || typeof obj !== "object") return;
-    
-    if (Array.isArray(obj)) {
-      for (const el of obj) {
-        scan(el);
-      }
-      return;
-    }
-    
-    for (const key of Object.keys(obj)) {
-      const lowerKey = key.toLowerCase();
-      const val = obj[key];
+  // 2. Resolve quantities and level via IfcElementQuantity and IfcPropertySet relations in properties map
+  const elementObj = properties[id];
+  if (elementObj && elementObj.IsDefinedBy) {
+    const rels = Array.isArray(elementObj.IsDefinedBy) ? elementObj.IsDefinedBy : [elementObj.IsDefinedBy];
+    for (const relRef of rels) {
+      const relId = typeof relRef === "object" ? (relRef.value || relRef.id) : relRef;
+      const rel = properties[relId];
+      if (!rel) continue;
+
+      const defRef = rel.RelatingPropertyDefinition;
+      const defId = typeof defRef === "object" ? (defRef.value || defRef.id) : defRef;
+      const def = properties[defId];
+      if (!def) continue;
+
+      const defType = String(def.type || def.ObjectType || "");
       
-      // Look for quantities
-      if (lowerKey === "length" || lowerKey === "netlength") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) length = num;
-      }
-      if (lowerKey === "width") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) width = num;
-      }
-      if (lowerKey === "height" || lowerKey === "depth") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) height = num;
-      }
-      if (lowerKey === "grossarea" || lowerKey === "grosssidearea" || lowerKey === "grossfootprintarea") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) grossArea = num;
-      }
-      if (lowerKey === "netarea" || lowerKey === "area") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) netArea = num;
-      }
-      if (lowerKey === "grossvolume") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) grossVolume = num;
-      }
-      if (lowerKey === "netvolume" || lowerKey === "volume") {
-        const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) netVolume = num;
-      }
-      
-      // Look for level
-      if (lowerKey === "level" || lowerKey === "storey" || lowerKey === "storeys" || lowerKey.includes("buildingstorey") || lowerKey === "referencelevel") {
-        const strVal = String(unwrap(val) || "");
-        if (strVal && strVal !== "undefined" && strVal !== "null") {
-          level = strVal;
+      // IfcElementQuantity
+      if (defType.includes("IfcElementQuantity") || def.Quantities) {
+        const qts = Array.isArray(def.Quantities) ? def.Quantities : [def.Quantities];
+        for (const qtyRef of qts) {
+          const qtyId = typeof qtyRef === "object" ? (qtyRef.value || qtyRef.id) : qtyRef;
+          const qty = properties[qtyId];
+          if (!qty) continue;
+
+          const qtyName = qty.Name ? (typeof qty.Name === "object" ? qty.Name.value : qty.Name) : "";
+          let qtyVal = 0;
+          
+          if (qty.LengthValue !== undefined) qtyVal = typeof qty.LengthValue === "object" ? qty.LengthValue.value : qty.LengthValue;
+          else if (qty.AreaValue !== undefined) qtyVal = typeof qty.AreaValue === "object" ? qty.AreaValue.value : qty.AreaValue;
+          else if (qty.VolumeValue !== undefined) qtyVal = typeof qty.VolumeValue === "object" ? qty.VolumeValue.value : qty.VolumeValue;
+          else if (qty.CountValue !== undefined) qtyVal = typeof qty.CountValue === "object" ? qty.CountValue.value : qty.CountValue;
+          else if (qty.WeightValue !== undefined) qtyVal = typeof qty.WeightValue === "object" ? qty.WeightValue.value : qty.WeightValue;
+
+          const lowerName = String(qtyName).toLowerCase();
+          if (lowerName === "length") length = qtyVal;
+          else if (lowerName === "width") width = qtyVal;
+          else if (lowerName === "height" || lowerName === "depth") height = qtyVal;
+          else if (lowerName === "grossarea" || lowerName === "grosssidearea" || lowerName === "grossfootprintarea") grossArea = qtyVal;
+          else if (lowerName === "netarea" || lowerName === "area" || lowerName === "netsidearea") netArea = qtyVal;
+          else if (lowerName === "grossvolume") grossVolume = qtyVal;
+          else if (lowerName === "netvolume" || lowerName === "volume") netVolume = qtyVal;
         }
       }
-      
-      if (val && typeof val === "object" && !("value" in val) && key !== "parent") {
-        scan(val);
+
+      // IfcPropertySet
+      if (defType.includes("IfcPropertySet") || def.HasProperties) {
+        const props = Array.isArray(def.HasProperties) ? def.HasProperties : [def.HasProperties];
+        for (const propRef of props) {
+          const propId = typeof propRef === "object" ? (propRef.value || propRef.id) : propRef;
+          const prop = properties[propId];
+          if (!prop) continue;
+
+          const propName = prop.Name ? (typeof prop.Name === "object" ? prop.Name.value : prop.Name) : "";
+          let propVal: any = undefined;
+          if (prop.NominalValue) {
+            propVal = typeof prop.NominalValue === "object" ? (prop.NominalValue.value ?? prop.NominalValue) : prop.NominalValue;
+          }
+
+          if (propVal !== undefined) {
+            const lowerName = String(propName).toLowerCase();
+            if (lowerName === "level" || lowerName === "storey" || lowerName === "storeys" || lowerName.includes("buildingstorey") || lowerName === "referencelevel") {
+              if (level === "N/A") level = String(propVal);
+            }
+            if (lowerName === "length") length = parseFloat(propVal) || length;
+            else if (lowerName === "width") width = parseFloat(propVal) || width;
+            else if (lowerName === "height") height = parseFloat(propVal) || height;
+          }
+        }
       }
     }
-  };
+  }
 
-  scan(item);
+  // Fallback to legacy scan if quantities are still 0
+  if (length === 0 && netArea === 0 && netVolume === 0) {
+    const scan = (obj: any) => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) {
+        for (const el of obj) scan(el);
+        return;
+      }
+      for (const key of Object.keys(obj)) {
+        const lowerKey = key.toLowerCase();
+        const val = obj[key];
+        if (lowerKey === "length" || lowerKey === "netlength") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) length = num;
+        }
+        if (lowerKey === "width") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) width = num;
+        }
+        if (lowerKey === "height" || lowerKey === "depth") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) height = num;
+        }
+        if (lowerKey === "grossarea" || lowerKey === "grosssidearea" || lowerKey === "grossfootprintarea") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) grossArea = num;
+        }
+        if (lowerKey === "netarea" || lowerKey === "area") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) netArea = num;
+        }
+        if (lowerKey === "grossvolume") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) grossVolume = num;
+        }
+        if (lowerKey === "netvolume" || lowerKey === "volume") {
+          const num = parseFloat(String(unwrap(val)));
+          if (!isNaN(num)) netVolume = num;
+        }
+        if (val && typeof val === "object" && !("value" in val) && key !== "parent") {
+          scan(val);
+        }
+      }
+    };
+    scan(item);
+  }
 
   return {
     id,
@@ -200,6 +258,33 @@ export class PropertyTableModule {
     this.clearRows();
 
     try {
+      // Fetch full properties map from model
+      const properties = (await model.getProperties()) || model.properties || {};
+
+      // Build storey map using IfcRelContainedInSpatialStructure
+      const elementStoreyMap = new Map<number, string>();
+      for (const key of Object.keys(properties)) {
+        const obj = properties[key];
+        if (obj) {
+          const typeStr = String(obj.type || obj.ObjectType || "").toUpperCase();
+          if (typeStr.includes("RELCONTAINEDINSPATIALSTRUCTURE") || obj.type === 13123) {
+            const relatedRef = obj.RelatedElements;
+            const storeyRef = obj.RelatingStructure;
+            if (relatedRef && storeyRef) {
+              const storeyId = typeof storeyRef === "object" ? (storeyRef.value || storeyRef.id) : storeyRef;
+              const storey = properties[storeyId];
+              const storeyName = storey ? (storey.Name ? (typeof storey.Name === "object" ? storey.Name.value : storey.Name) : "Unknown Level") : "Level";
+              
+              const elements = Array.isArray(relatedRef) ? relatedRef : [relatedRef];
+              for (const elRef of elements) {
+                const elId = typeof elRef === "object" ? (elRef.value || elRef.id) : elRef;
+                elementStoreyMap.set(Number(elId), String(storeyName));
+              }
+            }
+          }
+        }
+      }
+
       const itemsMap = await model.getItems();
       
       for (const [id, item] of itemsMap.entries()) {
@@ -208,7 +293,7 @@ export class PropertyTableModule {
         
         if (isSpatial) continue; // Exclude spatial hierarchy components
 
-        const dataRow = extractBIMData(id, item);
+        const dataRow = extractBIMData(id, item, properties, elementStoreyMap);
         this.rawData.push(dataRow);
       }
 
