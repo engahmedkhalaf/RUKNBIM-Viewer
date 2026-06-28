@@ -20,6 +20,15 @@ interface TableRowData {
 
 type ColumnKey = string;
 
+const resolveId = (ref: any): number | null => {
+  if (ref === null || ref === undefined) return null;
+  if (typeof ref === "object") {
+    const id = ref.value ?? ref.id;
+    return id !== undefined && id !== null ? Number(id) : null;
+  }
+  return Number(ref);
+};
+
 function extractBIMData(
   id: number,
   item: any,
@@ -100,12 +109,14 @@ function extractBIMData(
   if (elementObj && elementObj.IsDefinedBy) {
     const rels = Array.isArray(elementObj.IsDefinedBy) ? elementObj.IsDefinedBy : [elementObj.IsDefinedBy];
     for (const relRef of rels) {
-      const relId = typeof relRef === "object" ? (relRef.value || relRef.id) : relRef;
+      const relId = resolveId(relRef);
+      if (relId === null) continue;
       const rel = properties[relId];
       if (!rel) continue;
 
       const defRef = rel.RelatingPropertyDefinition;
-      const defId = typeof defRef === "object" ? (defRef.value || defRef.id) : defRef;
+      const defId = resolveId(defRef);
+      if (defId === null) continue;
       const def = properties[defId];
       if (!def) continue;
 
@@ -115,7 +126,8 @@ function extractBIMData(
       if (defType.includes("IfcElementQuantity") || def.Quantities) {
         const qts = Array.isArray(def.Quantities) ? def.Quantities : [def.Quantities];
         for (const qtyRef of qts) {
-          const qtyId = typeof qtyRef === "object" ? (qtyRef.value || qtyRef.id) : qtyRef;
+          const qtyId = resolveId(qtyRef);
+          if (qtyId === null) continue;
           const qty = properties[qtyId];
           if (!qty) continue;
 
@@ -144,7 +156,8 @@ function extractBIMData(
         const setName = unwrap(def.Name) || "Pset_Custom";
         const props = Array.isArray(def.HasProperties) ? def.HasProperties : [def.HasProperties];
         for (const propRef of props) {
-          const propId = typeof propRef === "object" ? (propRef.value || propRef.id) : propRef;
+          const propId = resolveId(propRef);
+          if (propId === null) continue;
           const prop = properties[propId];
           if (!prop) continue;
 
@@ -307,14 +320,16 @@ export class PropertyTableModule {
             const relatedRef = obj.RelatedElements;
             const storeyRef = obj.RelatingStructure;
             if (relatedRef && storeyRef) {
-              const storeyId = typeof storeyRef === "object" ? (storeyRef.value || storeyRef.id) : storeyRef;
-              const storey = properties[storeyId];
+              const storeyId = resolveId(storeyRef);
+              const storey = storeyId !== null ? properties[storeyId] : null;
               const storeyName = storey ? (storey.Name ? (typeof storey.Name === "object" ? storey.Name.value : storey.Name) : "Unknown Level") : "Level";
               
               const elements = Array.isArray(relatedRef) ? relatedRef : [relatedRef];
               for (const elRef of elements) {
-                const elId = typeof elRef === "object" ? (elRef.value || elRef.id) : elRef;
-                elementStoreyMap.set(Number(elId), String(storeyName));
+                const elId = resolveId(elRef);
+                if (elId !== null) {
+                  elementStoreyMap.set(elId, String(storeyName));
+                }
               }
             }
           }
@@ -324,16 +339,16 @@ export class PropertyTableModule {
             const relatedRef = obj.RelatedObjects;
             const materialRef = obj.RelatingMaterial;
             if (relatedRef && materialRef) {
-              const materialId = typeof materialRef === "object" ? (materialRef.value || materialRef.id) : materialRef;
-              const material = properties[materialId];
+              const materialId = resolveId(materialRef);
+              const material = materialId !== null ? properties[materialId] : null;
               
               let materialName = "";
               if (material) {
                 if (material.Name) {
                   materialName = typeof material.Name === "object" ? material.Name.value : material.Name;
                 } else if (material.ForLayerSet) {
-                  const lsId = typeof material.ForLayerSet === "object" ? (material.ForLayerSet.value || material.ForLayerSet.id) : material.ForLayerSet;
-                  const layerSet = properties[lsId];
+                  const lsId = resolveId(material.ForLayerSet);
+                  const layerSet = lsId !== null ? properties[lsId] : null;
                   if (layerSet && layerSet.LayerSetName) {
                     materialName = typeof layerSet.LayerSetName === "object" ? layerSet.LayerSetName.value : layerSet.LayerSetName;
                   }
@@ -343,8 +358,10 @@ export class PropertyTableModule {
               if (materialName) {
                 const elements = Array.isArray(relatedRef) ? relatedRef : [relatedRef];
                 for (const elRef of elements) {
-                  const elId = typeof elRef === "object" ? (elRef.value || elRef.id) : elRef;
-                  elementMaterialMap.set(Number(elId), String(materialName));
+                  const elId = resolveId(elRef);
+                  if (elId !== null) {
+                    elementMaterialMap.set(elId, String(materialName));
+                  }
                 }
               }
             }
