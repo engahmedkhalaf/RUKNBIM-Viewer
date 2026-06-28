@@ -140,7 +140,7 @@ export class PropertiesPanelModule {
       top: "20px",
       right: "20px",
       bottom: "100px", // leave space for bottom toolbar
-      width: "360px",
+      width: "390px",
       zIndex: "10",
       display: "flex",
       flexDirection: "column",
@@ -151,19 +151,19 @@ export class PropertiesPanelModule {
     panel.innerHTML = `
       <!-- Tab Headers -->
       <div class="panel-tabs" style="display: flex; border-bottom: 1px solid var(--border-color); background: rgba(31, 58, 110, 0.05);">
-        <button class="tab-btn active-tab" data-tab="tree" style="flex: 1; padding: 12px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--primary-purple); text-align: center; border-bottom: 2px solid var(--primary-purple); letter-spacing: 0.5px;">
+        <button class="tab-btn active-tab" data-tab="tree" style="flex: 1; padding: 12px 4px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--primary-purple); text-align: center; border-bottom: 2px solid var(--primary-purple); letter-spacing: 0.5px;">
           <i class="fa-solid fa-folder-tree" style="margin-right: 4px;"></i> TREE
         </button>
-        <button class="tab-btn" data-tab="props" style="flex: 1; padding: 12px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
+        <button class="tab-btn" data-tab="props" style="flex: 1; padding: 12px 4px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
           <i class="fa-solid fa-circle-info" style="margin-right: 4px;"></i> PROPS
         </button>
-        <button class="tab-btn" data-tab="storeys" style="flex: 1; padding: 12px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
+        <button class="tab-btn" data-tab="storeys" style="flex: 1; padding: 12px 4px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
           <i class="fa-solid fa-layer-group" style="margin-right: 4px;"></i> LEVELS
         </button>
-        <button class="tab-btn" data-tab="ghost" style="flex: 1; padding: 12px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
+        <button class="tab-btn" data-tab="ghost" style="flex: 1; padding: 12px 4px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
           <i class="fa-solid fa-ghost" style="margin-right: 4px;"></i> GHOST
         </button>
-        <button class="tab-btn" data-tab="export" style="flex: 1; padding: 12px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
+        <button class="tab-btn" data-tab="export" style="flex: 1; padding: 12px 4px; font-family: var(--font-title); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; border-bottom: 2px solid transparent; letter-spacing: 0.5px;">
           <i class="fa-solid fa-camera" style="margin-right: 4px;"></i> EXPORT
         </button>
       </div>

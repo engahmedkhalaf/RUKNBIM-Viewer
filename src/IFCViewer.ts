@@ -56,6 +56,9 @@ export class IFCViewer {
     // 6. Bind loader events to UI panels
     this.setupIntegrationEvents();
 
+    // 7. Bind double middle-click (wheel double-click) to zoom extents
+    this.bindMiddleDoubleClick();
+
     this._isInitialized = true;
     console.log("RUKNBIM Viewer fully initialized.");
   }
@@ -95,5 +98,30 @@ export class IFCViewer {
       this.propertiesPanel.ghostModeManager.clearGhosting();
       // Additional actions on selection cleared can be wired here
     };
+  }
+
+  private bindMiddleDoubleClick(): void {
+    const canvas = this.container.querySelector("canvas");
+    if (!canvas) return;
+
+    let lastMiddleClickTime = 0;
+    canvas.addEventListener("mousedown", async (e: MouseEvent) => {
+      if (e.button === 1) { // Middle mouse button (scroll wheel click)
+        e.preventDefault();
+        const now = performance.now();
+        if (now - lastMiddleClickTime < 300) { // 300ms double-click window
+          console.log("[Viewer] Middle mouse double-click detected. Zooming to extents...");
+          await this.loader.zoomExtents();
+        }
+        lastMiddleClickTime = now;
+      }
+    });
+
+    // Prevent default quick-scroll overlay when clicking scroll wheel on Windows browsers
+    canvas.addEventListener("click", (e: MouseEvent) => {
+      if (e.button === 1) {
+        e.preventDefault();
+      }
+    });
   }
 }

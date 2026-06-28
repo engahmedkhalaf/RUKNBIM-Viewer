@@ -188,6 +188,40 @@ export class IFCLoaderModule {
   }
 
   /**
+   * Fits the camera view to enclose all active models in the scene.
+   */
+  public async zoomExtents(): Promise<void> {
+    const cam: any = (this.world as any).camera;
+    if (!cam?.controls) return;
+
+    const unionBox = new THREE.Box3();
+    let hasModels = false;
+
+    for (const model of this.loadedModels.values()) {
+      let box: THREE.Box3 | undefined = model?.box;
+      if (!box) {
+        const obj = model?.object as THREE.Object3D | undefined;
+        if (obj) {
+          box = new THREE.Box3().setFromObject(obj);
+        }
+      }
+      if (box && !box.isEmpty()) {
+        unionBox.union(box);
+        hasModels = true;
+      }
+    }
+
+    if (hasModels && !unionBox.isEmpty()) {
+      if (typeof cam.controls.fitToBox === "function") {
+        await cam.controls.fitToBox(unionBox, true);
+      }
+    } else {
+      // Fallback default view if no models loaded
+      await cam.controls.setLookAt(20, 20, 20, 0, 0, 0, true);
+    }
+  }
+
+  /**
    * Exports the given model to a .frag file.
    */
   public async exportToFrag(model: any): Promise<ArrayBuffer> {
