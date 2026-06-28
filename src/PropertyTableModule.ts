@@ -27,110 +27,102 @@ function extractBIMData(id: number, item: any): TableRowData {
   let volume = 0;
   let level = "N/A";
   
-  const rawData = item.data || {};
+  const rawData = item.data || item || {};
   
-  // ObjectType contains the Type/Family info in IFC (e.g., "Basic Wall:200mm")
-  if (rawData.ObjectType) {
-    const objType = typeof rawData.ObjectType === "object" && "value" in rawData.ObjectType ? rawData.ObjectType.value : rawData.ObjectType;
-    if (objType) {
-      const parts = String(objType).split(":");
-      if (parts.length > 1) {
-        family = parts[0].trim();
-        type = parts.slice(1).join(":").trim();
-      } else {
-        type = String(objType);
-      }
+  const unwrap = (v: any): any => {
+    if (v === null || v === undefined) return undefined;
+    if (typeof v === "object" && "value" in v) return v.value;
+    return v;
+  };
+
+  // 1. Resolve Family / Type
+  const objType = unwrap(rawData.ObjectType);
+  const nameVal = unwrap(rawData.Name);
+  
+  if (objType) {
+    const parts = String(objType).split(":");
+    if (parts.length > 1) {
+      family = parts[0].trim();
+      type = parts.slice(1).join(":").trim();
+    } else {
+      type = String(objType);
     }
-  } else if (rawData.Name) {
-    const nameVal = typeof rawData.Name === "object" && "value" in rawData.Name ? rawData.Name.value : rawData.Name;
-    if (nameVal) {
-      const parts = String(nameVal).split(":");
-      if (parts.length > 1) {
-        family = parts[0].trim();
-        type = parts.slice(1).join(":").trim();
-      } else {
-        type = String(nameVal);
-      }
+  } else if (nameVal) {
+    const parts = String(nameVal).split(":");
+    if (parts.length > 1) {
+      family = parts[0].trim();
+      type = parts.slice(1).join(":").trim();
+    } else {
+      type = String(nameVal);
     }
   }
 
-  // Scan all properties recursively for Uniclass/Omniclass or Classification references
-  const scanClassification = (obj: any) => {
+  // 2. Recursive scanner to find properties inside nested objects/arrays
+  const scan = (obj: any) => {
     if (!obj || typeof obj !== "object") return;
+    
+    if (Array.isArray(obj)) {
+      for (const el of obj) {
+        scan(el);
+      }
+      return;
+    }
+    
     for (const key of Object.keys(obj)) {
       const lowerKey = key.toLowerCase();
       const val = obj[key];
+      
+      // Look for classifications
       if (lowerKey.includes("classification") || lowerKey.includes("uniclass") || lowerKey.includes("omniclass")) {
-        let strVal = "";
-        if (typeof val === "string") strVal = val;
-        else if (typeof val === "number") strVal = String(val);
-        else if (val && typeof val === "object") strVal = String(val.value || val.name || "");
-        
-        if (strVal && strVal !== "N/A" && strVal !== "undefined") {
+        const strVal = String(unwrap(val) || "");
+        if (strVal && strVal !== "N/A" && strVal !== "undefined" && strVal !== "null") {
           classCode = strVal;
           classSystem = lowerKey.includes("uniclass") ? "UniClass" : (lowerKey.includes("omniclass") ? "OmniClass" : "Classification");
-          return;
         }
       }
-      if (val && typeof val === "object" && !("value" in val)) {
-        scanClassification(val);
-      }
-    }
-  };
-  scanClassification(rawData);
 
-  // Scan for Quantities (Length, Area, Volume)
-  const scanQuantities = (obj: any) => {
-    if (!obj || typeof obj !== "object") return;
-    for (const key of Object.keys(obj)) {
-      const lowerKey = key.toLowerCase();
-      const val = obj[key];
+      if (lowerKey === "itemreference" || lowerKey === "classificationcode" || lowerKey === "code") {
+        const strVal = String(unwrap(val) || "");
+        if (strVal && strVal !== "undefined" && strVal !== "null") {
+          classCode = strVal;
+        }
+      }
+      if (lowerKey === "referencedsource" || lowerKey === "classificationsystem" || lowerKey === "systemname") {
+        const strVal = String(unwrap(val) || "");
+        if (strVal && strVal !== "undefined" && strVal !== "null") {
+          classSystem = strVal;
+        }
+      }
       
-      // Length
+      // Look for quantities
       if (lowerKey === "length" || lowerKey === "netlength" || lowerKey === "height" || lowerKey === "width") {
-        if (typeof val === "number") length = val;
-        else if (val && typeof val.value === "number") length = val.value;
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) length = num;
       }
-      // Area
       if (lowerKey === "area" || lowerKey === "netarea" || lowerKey === "grossarea") {
-        if (typeof val === "number") area = val;
-        else if (val && typeof val.value === "number") area = val.value;
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) area = num;
       }
-      // Volume
       if (lowerKey === "volume" || lowerKey === "netvolume" || lowerKey === "grossvolume") {
-        if (typeof val === "number") volume = val;
-        else if (val && typeof val.value === "number") volume = val.value;
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) volume = num;
       }
       
-      if (val && typeof val === "object" && !("value" in val)) {
-        scanQuantities(val);
-      }
-    }
-  };
-  scanQuantities(rawData);
-
-  // Find Level (Storey) from the element properties
-  const scanLevel = (obj: any) => {
-    if (!obj || typeof obj !== "object") return;
-    for (const key of Object.keys(obj)) {
-      const lowerKey = key.toLowerCase();
-      const val = obj[key];
+      // Look for level
       if (lowerKey === "level" || lowerKey === "storey" || lowerKey === "storeys" || lowerKey.includes("buildingstorey") || lowerKey === "referencelevel") {
-        let strVal = "";
-        if (typeof val === "string") strVal = val;
-        else if (typeof val === "number") strVal = String(val);
-        else if (val && typeof val === "object") strVal = String(val.value || val.name || "");
+        const strVal = String(unwrap(val) || "");
         if (strVal && strVal !== "undefined" && strVal !== "null") {
           level = strVal;
-          return;
         }
       }
-      if (val && typeof val === "object" && !("value" in val)) {
-        scanLevel(val);
+      
+      if (val && typeof val === "object" && !("value" in val) && key !== "parent") {
+        scan(val);
       }
     }
   };
-  scanLevel(rawData);
+
+  scan(item);
 
   return {
     id,
