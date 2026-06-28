@@ -2,14 +2,17 @@ import { SelectionManager } from "./SelectionManager";
 
 interface TableRowData {
   id: number;
+  guid: string;
   category: string;
   family: string;
   type: string;
-  classSystem: string;
-  classCode: string;
   length: number;
-  area: number;
-  volume: number;
+  width: number;
+  height: number;
+  grossArea: number;
+  netArea: number;
+  grossVolume: number;
+  netVolume: number;
   level: string;
 }
 
@@ -18,13 +21,16 @@ type ColumnKey = keyof TableRowData;
 function extractBIMData(id: number, item: any): TableRowData {
   const category = item.category || "Unknown";
   
+  let guid = item.guid || "N/A";
   let family = category;
   let type = "Standard";
-  let classSystem = "N/A";
-  let classCode = "N/A";
   let length = 0;
-  let area = 0;
-  let volume = 0;
+  let width = 0;
+  let height = 0;
+  let grossArea = 0;
+  let netArea = 0;
+  let grossVolume = 0;
+  let netVolume = 0;
   let level = "N/A";
   
   const rawData = item.data || item || {};
@@ -34,6 +40,10 @@ function extractBIMData(id: number, item: any): TableRowData {
     if (typeof v === "object" && "value" in v) return v.value;
     return v;
   };
+
+  // Resolve GUID
+  const guidVal = unwrap(rawData.GlobalId) || unwrap(rawData.guid);
+  if (guidVal) guid = String(guidVal);
 
   // 1. Resolve Family / Type
   const objType = unwrap(rawData.ObjectType);
@@ -72,40 +82,34 @@ function extractBIMData(id: number, item: any): TableRowData {
       const lowerKey = key.toLowerCase();
       const val = obj[key];
       
-      // Look for classifications
-      if (lowerKey.includes("classification") || lowerKey.includes("uniclass") || lowerKey.includes("omniclass")) {
-        const strVal = String(unwrap(val) || "");
-        if (strVal && strVal !== "N/A" && strVal !== "undefined" && strVal !== "null") {
-          classCode = strVal;
-          classSystem = lowerKey.includes("uniclass") ? "UniClass" : (lowerKey.includes("omniclass") ? "OmniClass" : "Classification");
-        }
-      }
-
-      if (lowerKey === "itemreference" || lowerKey === "classificationcode" || lowerKey === "code") {
-        const strVal = String(unwrap(val) || "");
-        if (strVal && strVal !== "undefined" && strVal !== "null") {
-          classCode = strVal;
-        }
-      }
-      if (lowerKey === "referencedsource" || lowerKey === "classificationsystem" || lowerKey === "systemname") {
-        const strVal = String(unwrap(val) || "");
-        if (strVal && strVal !== "undefined" && strVal !== "null") {
-          classSystem = strVal;
-        }
-      }
-      
       // Look for quantities
-      if (lowerKey === "length" || lowerKey === "netlength" || lowerKey === "height" || lowerKey === "width") {
+      if (lowerKey === "length" || lowerKey === "netlength") {
         const num = parseFloat(String(unwrap(val)));
         if (!isNaN(num)) length = num;
       }
-      if (lowerKey === "area" || lowerKey === "netarea" || lowerKey === "grossarea") {
+      if (lowerKey === "width") {
         const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) area = num;
+        if (!isNaN(num)) width = num;
       }
-      if (lowerKey === "volume" || lowerKey === "netvolume" || lowerKey === "grossvolume") {
+      if (lowerKey === "height" || lowerKey === "depth") {
         const num = parseFloat(String(unwrap(val)));
-        if (!isNaN(num)) volume = num;
+        if (!isNaN(num)) height = num;
+      }
+      if (lowerKey === "grossarea" || lowerKey === "grosssidearea" || lowerKey === "grossfootprintarea") {
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) grossArea = num;
+      }
+      if (lowerKey === "netarea" || lowerKey === "area") {
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) netArea = num;
+      }
+      if (lowerKey === "grossvolume") {
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) grossVolume = num;
+      }
+      if (lowerKey === "netvolume" || lowerKey === "volume") {
+        const num = parseFloat(String(unwrap(val)));
+        if (!isNaN(num)) netVolume = num;
       }
       
       // Look for level
@@ -126,14 +130,17 @@ function extractBIMData(id: number, item: any): TableRowData {
 
   return {
     id,
+    guid,
     category,
     family,
     type,
-    classSystem,
-    classCode,
     length,
-    area,
-    volume,
+    width,
+    height,
+    grossArea,
+    netArea,
+    grossVolume,
+    netVolume,
     level
   };
 }
@@ -158,18 +165,21 @@ export class PropertyTableModule {
   private maxVisibleRows = 100;
 
   private readonly columnDefs: { key: ColumnKey; label: string }[] = [
-    { key: "id", label: "Element ID" },
-    { key: "category", label: "Category" },
+    { key: "id", label: "ExpressID" },
+    { key: "guid", label: "GlobalId" },
+    { key: "category", label: "Class" },
     { key: "family", label: "Family" },
     { key: "type", label: "Type" },
-    { key: "classSystem", label: "Classification System" },
-    { key: "classCode", label: "Classification Code" },
     { key: "length", label: "Length" },
-    { key: "area", label: "Area" },
-    { key: "volume", label: "Volume" },
+    { key: "width", label: "Width" },
+    { key: "height", label: "Height" },
+    { key: "grossArea", label: "GrossArea" },
+    { key: "netArea", label: "NetArea" },
+    { key: "grossVolume", label: "GrossVolume" },
+    { key: "netVolume", label: "NetVolume" },
     { key: "level", label: "Level" },
   ];
-  private visibleColumns = new Set<ColumnKey>(["id", "category", "family", "type", "length", "area", "volume", "level"]);
+  private visibleColumns = new Set<ColumnKey>(["id", "guid", "category", "length", "width", "height", "grossArea", "netArea", "grossVolume", "netVolume", "level"]);
   private isFullscreen = false;
   private prevStyle: { left: string; top: string; right: string; bottom: string; width: string; height: string } | null = null;
 
@@ -490,10 +500,10 @@ export class PropertyTableModule {
       this.filteredData = this.rawData.filter(item => {
         return (
           item.id.toString().includes(val) ||
+          item.guid.toLowerCase().includes(val) ||
           item.category.toLowerCase().includes(val) ||
           item.family.toLowerCase().includes(val) ||
           item.type.toLowerCase().includes(val) ||
-          item.classCode.toLowerCase().includes(val) ||
           item.level.toLowerCase().includes(val)
         );
       });
@@ -583,11 +593,12 @@ export class PropertyTableModule {
         const val = row[key];
         
         let style = "padding: 8px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;";
+        const isQuantity = ["length", "width", "height", "grossArea", "netArea", "grossVolume", "netVolume"].includes(key);
         if (key === "id") {
           style = "padding: 8px; font-weight: 500; font-family: monospace; color: var(--text-muted);";
-        } else if (key === "category" || key === "level") {
-          style = "padding: 8px; color: var(--text-secondary);";
-        } else if (key === "length" || key === "area" || key === "volume") {
+        } else if (key === "category" || key === "level" || key === "guid") {
+          style = "padding: 8px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;";
+        } else if (isQuantity) {
           style = "padding: 8px; font-family: monospace; text-align: right; color: var(--primary-purple);";
         }
         
