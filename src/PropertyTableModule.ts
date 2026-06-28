@@ -2,12 +2,149 @@ import { SelectionManager } from "./SelectionManager";
 
 interface TableRowData {
   id: number;
-  name: string;
   category: string;
-  tag: string;
+  family: string;
+  type: string;
+  classSystem: string;
+  classCode: string;
+  length: number;
+  area: number;
+  volume: number;
+  level: string;
 }
 
 type ColumnKey = keyof TableRowData;
+
+function extractBIMData(id: number, item: any): TableRowData {
+  const category = item.category || "Unknown";
+  
+  let family = category;
+  let type = "Standard";
+  let classSystem = "N/A";
+  let classCode = "N/A";
+  let length = 0;
+  let area = 0;
+  let volume = 0;
+  let level = "N/A";
+  
+  const rawData = item.data || {};
+  
+  // ObjectType contains the Type/Family info in IFC (e.g., "Basic Wall:200mm")
+  if (rawData.ObjectType) {
+    const objType = typeof rawData.ObjectType === "object" && "value" in rawData.ObjectType ? rawData.ObjectType.value : rawData.ObjectType;
+    if (objType) {
+      const parts = String(objType).split(":");
+      if (parts.length > 1) {
+        family = parts[0].trim();
+        type = parts.slice(1).join(":").trim();
+      } else {
+        type = String(objType);
+      }
+    }
+  } else if (rawData.Name) {
+    const nameVal = typeof rawData.Name === "object" && "value" in rawData.Name ? rawData.Name.value : rawData.Name;
+    if (nameVal) {
+      const parts = String(nameVal).split(":");
+      if (parts.length > 1) {
+        family = parts[0].trim();
+        type = parts.slice(1).join(":").trim();
+      } else {
+        type = String(nameVal);
+      }
+    }
+  }
+
+  // Scan all properties recursively for Uniclass/Omniclass or Classification references
+  const scanClassification = (obj: any) => {
+    if (!obj || typeof obj !== "object") return;
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      const val = obj[key];
+      if (lowerKey.includes("classification") || lowerKey.includes("uniclass") || lowerKey.includes("omniclass")) {
+        let strVal = "";
+        if (typeof val === "string") strVal = val;
+        else if (typeof val === "number") strVal = String(val);
+        else if (val && typeof val === "object") strVal = String(val.value || val.name || "");
+        
+        if (strVal && strVal !== "N/A" && strVal !== "undefined") {
+          classCode = strVal;
+          classSystem = lowerKey.includes("uniclass") ? "UniClass" : (lowerKey.includes("omniclass") ? "OmniClass" : "Classification");
+          return;
+        }
+      }
+      if (val && typeof val === "object" && !("value" in val)) {
+        scanClassification(val);
+      }
+    }
+  };
+  scanClassification(rawData);
+
+  // Scan for Quantities (Length, Area, Volume)
+  const scanQuantities = (obj: any) => {
+    if (!obj || typeof obj !== "object") return;
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      const val = obj[key];
+      
+      // Length
+      if (lowerKey === "length" || lowerKey === "netlength" || lowerKey === "height" || lowerKey === "width") {
+        if (typeof val === "number") length = val;
+        else if (val && typeof val.value === "number") length = val.value;
+      }
+      // Area
+      if (lowerKey === "area" || lowerKey === "netarea" || lowerKey === "grossarea") {
+        if (typeof val === "number") area = val;
+        else if (val && typeof val.value === "number") area = val.value;
+      }
+      // Volume
+      if (lowerKey === "volume" || lowerKey === "netvolume" || lowerKey === "grossvolume") {
+        if (typeof val === "number") volume = val;
+        else if (val && typeof val.value === "number") volume = val.value;
+      }
+      
+      if (val && typeof val === "object" && !("value" in val)) {
+        scanQuantities(val);
+      }
+    }
+  };
+  scanQuantities(rawData);
+
+  // Find Level (Storey) from the element properties
+  const scanLevel = (obj: any) => {
+    if (!obj || typeof obj !== "object") return;
+    for (const key of Object.keys(obj)) {
+      const lowerKey = key.toLowerCase();
+      const val = obj[key];
+      if (lowerKey === "level" || lowerKey === "storey" || lowerKey === "storeys" || lowerKey.includes("buildingstorey") || lowerKey === "referencelevel") {
+        let strVal = "";
+        if (typeof val === "string") strVal = val;
+        else if (typeof val === "number") strVal = String(val);
+        else if (val && typeof val === "object") strVal = String(val.value || val.name || "");
+        if (strVal && strVal !== "undefined" && strVal !== "null") {
+          level = strVal;
+          return;
+        }
+      }
+      if (val && typeof val === "object" && !("value" in val)) {
+        scanLevel(val);
+      }
+    }
+  };
+  scanLevel(rawData);
+
+  return {
+    id,
+    category,
+    family,
+    type,
+    classSystem,
+    classCode,
+    length,
+    area,
+    volume,
+    level
+  };
+}
 
 export class PropertyTableModule {
   private container: HTMLElement;
@@ -29,12 +166,18 @@ export class PropertyTableModule {
   private maxVisibleRows = 100;
 
   private readonly columnDefs: { key: ColumnKey; label: string }[] = [
-    { key: "id", label: "ID" },
-    { key: "name", label: "Name" },
-    { key: "category", label: "Class" },
-    { key: "tag", label: "Tag" },
+    { key: "id", label: "Element ID" },
+    { key: "category", label: "Category" },
+    { key: "family", label: "Family" },
+    { key: "type", label: "Type" },
+    { key: "classSystem", label: "Classification System" },
+    { key: "classCode", label: "Classification Code" },
+    { key: "length", label: "Length" },
+    { key: "area", label: "Area" },
+    { key: "volume", label: "Volume" },
+    { key: "level", label: "Level" },
   ];
-  private visibleColumns = new Set<ColumnKey>(["id", "name", "category", "tag"]);
+  private visibleColumns = new Set<ColumnKey>(["id", "category", "family", "type", "length", "area", "volume", "level"]);
   private isFullscreen = false;
   private prevStyle: { left: string; top: string; right: string; bottom: string; width: string; height: string } | null = null;
 
@@ -63,27 +206,8 @@ export class PropertyTableModule {
         
         if (isSpatial) continue; // Exclude spatial hierarchy components
 
-        let name = "Unnamed Element";
-        let tag = "N/A";
-
-        if (item.data) {
-          const nameVal = item.data.Name;
-          if (nameVal) {
-            name = typeof nameVal === "object" && "value" in nameVal ? nameVal.value : nameVal;
-          }
-
-          const tagVal = item.data.Tag;
-          if (tagVal) {
-            tag = typeof tagVal === "object" && "value" in tagVal ? tagVal.value : tagVal;
-          }
-        }
-
-        this.rawData.push({
-          id: id,
-          name: name,
-          category: category,
-          tag: tag
-        });
+        const dataRow = extractBIMData(id, item);
+        this.rawData.push(dataRow);
       }
 
       this.filteredData = [...this.rawData];
@@ -374,9 +498,11 @@ export class PropertyTableModule {
       this.filteredData = this.rawData.filter(item => {
         return (
           item.id.toString().includes(val) ||
-          item.name.toLowerCase().includes(val) ||
           item.category.toLowerCase().includes(val) ||
-          item.tag.toLowerCase().includes(val)
+          item.family.toLowerCase().includes(val) ||
+          item.type.toLowerCase().includes(val) ||
+          item.classCode.toLowerCase().includes(val) ||
+          item.level.toLowerCase().includes(val)
         );
       });
     }
@@ -433,10 +559,12 @@ export class PropertyTableModule {
       this.rowCountLabel.innerText = `(${this.filteredData.length} items)`;
     }
 
+    const totalCols = this.columnDefs.filter(c => this.visibleColumns.has(c.key)).length;
+
     if (this.filteredData.length === 0) {
       this.tableBody.innerHTML = `
         <tr>
-          <td colspan="4" style="color: var(--text-muted); text-align: center; padding: 16px; font-style: italic;">
+          <td colspan="${totalCols}" style="color: var(--text-muted); text-align: center; padding: 16px; font-style: italic;">
             No matching elements found.
           </td>
         </tr>
@@ -457,12 +585,31 @@ export class PropertyTableModule {
         transition: "background 0.2s"
       });
 
-      tr.innerHTML = `
-        <td style="padding: 8px; font-weight: 500; font-family: monospace; color: var(--text-muted);">${row.id}</td>
-        <td style="padding: 8px; font-weight: 600; color: var(--text-main);">${row.name}</td>
-        <td style="padding: 8px; color: var(--text-secondary);">${row.category}</td>
-        <td style="padding: 8px; color: var(--text-muted);">${row.tag}</td>
-      `;
+      let cellsHtml = "";
+      for (const { key } of this.columnDefs) {
+        if (!this.visibleColumns.has(key)) continue;
+        const val = row[key];
+        
+        let style = "padding: 8px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;";
+        if (key === "id") {
+          style = "padding: 8px; font-weight: 500; font-family: monospace; color: var(--text-muted);";
+        } else if (key === "category" || key === "level") {
+          style = "padding: 8px; color: var(--text-secondary);";
+        } else if (key === "length" || key === "area" || key === "volume") {
+          style = "padding: 8px; font-family: monospace; text-align: right; color: var(--primary-purple);";
+        }
+        
+        let displayVal = "";
+        if (typeof val === "number") {
+          displayVal = val > 0 ? val.toFixed(2) : "0.00";
+        } else {
+          displayVal = String(val ?? "N/A");
+        }
+        
+        cellsHtml += `<td style="${style}" title="${displayVal}">${displayVal}</td>`;
+      }
+      
+      tr.innerHTML = cellsHtml;
 
       tr.addEventListener("mouseenter", () => {
         tr.style.background = "var(--bg-hover)";
@@ -485,7 +632,7 @@ export class PropertyTableModule {
     if (this.filteredData.length > this.maxVisibleRows) {
       const trNotice = document.createElement("tr");
       trNotice.innerHTML = `
-        <td colspan="4" style="color: var(--text-muted); text-align: center; padding: 8px; font-style: italic; background: var(--bg-hover);">
+        <td colspan="${totalCols}" style="color: var(--text-muted); text-align: center; padding: 8px; font-style: italic; background: var(--bg-hover);">
           Showing ${this.maxVisibleRows} of ${this.filteredData.length} items (use search to narrow down results)
         </td>
       `;
