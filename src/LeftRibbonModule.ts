@@ -21,6 +21,7 @@ export class LeftRibbonModule {
   private panelBody!: HTMLDivElement;
   private activeId: string | null = null;
   private currentTeardown: (() => void) | null = null;
+  private panelWidths = new Map<string, string>();
 
   private buttons: RibbonButton[] = [
     {
@@ -173,6 +174,7 @@ export class LeftRibbonModule {
       borderTopLeftRadius: "0",
       borderBottomLeftRadius: "0",
       borderLeft: "0",
+      position: "relative",
     });
 
     const header = document.createElement("div");
@@ -225,6 +227,57 @@ export class LeftRibbonModule {
     panel.appendChild(header);
     panel.appendChild(body);
 
+    // Resize handle element
+    const resizeHandle = document.createElement("div");
+    Object.assign(resizeHandle.style, {
+      position: "absolute",
+      right: "0",
+      bottom: "0",
+      width: "14px",
+      height: "14px",
+      cursor: "se-resize",
+      zIndex: "20",
+    });
+    resizeHandle.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 14 14" style="position: absolute; right: 2px; bottom: 2px; opacity: 0.4; fill: var(--text-muted); pointer-events: none;">
+        <path d="M12 2v2h2V2h-2zm-3 3v2h2V5H9zm6 0v2h2V5h-2zm-9 3v2h2V8H6zm6 0v2h2V8h-2zm6 0v2h2V8h-2zm-12 3v2h2v-2H3zm6 0v2h2v-2H9zm6 0v2h2v-2h-2z" />
+      </svg>
+    `;
+
+    let startX = 0;
+    let startWidth = 0;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(240, Math.min(800, startWidth + deltaX));
+      panel.style.width = `${newWidth}px`;
+      if (this.activeId) {
+        this.panelWidths.set(this.activeId, `${newWidth}px`);
+      }
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      panel.style.transition = "width var(--transition-normal)";
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "";
+    };
+
+    resizeHandle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startX = e.clientX;
+      startWidth = panel.getBoundingClientRect().width;
+      panel.style.transition = "none";
+      document.body.style.cursor = "se-resize";
+      document.body.style.userSelect = "none";
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+
+    panel.appendChild(resizeHandle);
+
     this.panelTitle = title;
     this.panelBody = body;
     return panel;
@@ -251,8 +304,9 @@ export class LeftRibbonModule {
     this.panelBody.innerHTML = "";
     const result = btn.build?.(this.panelBody, this.viewer);
     if (typeof result === "function") this.currentTeardown = result;
-    const panelWidth = btn.id === "models" ? "360px" : "280px";
-    this.panel.style.width = panelWidth;
+    const cachedWidth = this.panelWidths.get(btn.id);
+    const defaultWidth = btn.id === "models" ? "360px" : "280px";
+    this.panel.style.width = cachedWidth || defaultWidth;
     this.refreshActiveStyling();
   }
 
