@@ -303,7 +303,7 @@ export class PropertyTableModule {
 
     try {
       // Fetch full properties map from model
-      const properties = (await model.getProperties()) || model.properties || {};
+      const properties = model.properties || {};
 
       // Build storey map using IfcRelContainedInSpatialStructure
       const elementStoreyMap = new Map<number, string>();
