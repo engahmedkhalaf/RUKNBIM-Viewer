@@ -346,6 +346,17 @@ export class TreeManager {
       if (node.localId !== null && node.localId !== undefined && !node.isCategoryGroup) {
         this.onNodeClickedCallback(modelId, node.localId);
       }
+
+      // Automatically expand/collapse folder nodes on row click
+      if (hasChildren && childrenUl) {
+        const collapsed = childrenUl.style.display === "none";
+        childrenUl.style.display = collapsed ? "block" : "none";
+        toggleSpan.innerHTML = `<i class="fa-solid fa-${collapsed ? "chevron-down" : "chevron-right"}"></i>`;
+        
+        if (collapsed && node.isCategoryGroup && labelEls.length > 0) {
+          this.populateNames(labelEls);
+        }
+      }
     });
 
     li.appendChild(nodeContent);
