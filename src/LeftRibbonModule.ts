@@ -437,7 +437,7 @@ export class LeftRibbonModule {
         const label = document.createElement("div");
         Object.assign(label.style, {
           flex: "1",
-          fontSize: "12px",
+          fontSize: "11px",
           color: "var(--text-main)",
           wordBreak: "break-all",
           lineHeight: "1.3",
