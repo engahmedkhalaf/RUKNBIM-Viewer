@@ -6,6 +6,7 @@ interface TableRowData {
   category: string;
   family: string;
   type: string;
+  material: string;
   length: number;
   width: number;
   height: number;
@@ -14,11 +15,19 @@ interface TableRowData {
   grossVolume: number;
   netVolume: number;
   level: string;
+  [key: string]: any;
 }
 
-type ColumnKey = keyof TableRowData;
+type ColumnKey = string;
 
-function extractBIMData(id: number, item: any, properties: any, elementStoreyMap: Map<number, string>): TableRowData {
+function extractBIMData(
+  id: number,
+  item: any,
+  properties: any,
+  elementStoreyMap: Map<number, string>,
+  elementMaterialMap: Map<number, string>,
+  dynamicKeysSet: Set<string>
+): TableRowData {
   const category = item.category || "Unknown";
   
   let guid = item.guid || "N/A";
@@ -32,6 +41,7 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
   let grossVolume = 0;
   let netVolume = 0;
   let level = elementStoreyMap.get(id) || "N/A";
+  let materialVal = elementMaterialMap.get(id) || "N/A";
   
   const rawData = item.data || item || {};
   
@@ -67,7 +77,25 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
     }
   }
 
-  // 2. Resolve quantities and level via IfcElementQuantity and IfcPropertySet relations in properties map
+  // Create base data row object
+  const dataRow: TableRowData = {
+    id,
+    guid,
+    category,
+    family,
+    type,
+    material: materialVal,
+    length,
+    width,
+    height,
+    grossArea,
+    netArea,
+    grossVolume,
+    netVolume,
+    level
+  };
+
+  // 2. Resolve quantities, level, and ALL dynamic Psets via IfcElementQuantity and IfcPropertySet relations in properties map
   const elementObj = properties[id];
   if (elementObj && elementObj.IsDefinedBy) {
     const rels = Array.isArray(elementObj.IsDefinedBy) ? elementObj.IsDefinedBy : [elementObj.IsDefinedBy];
@@ -111,8 +139,9 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
         }
       }
 
-      // IfcPropertySet
+      // IfcPropertySet - Extract all properties dynamically!
       if (defType.includes("IfcPropertySet") || def.HasProperties) {
+        const setName = unwrap(def.Name) || "Pset_Custom";
         const props = Array.isArray(def.HasProperties) ? def.HasProperties : [def.HasProperties];
         for (const propRef of props) {
           const propId = typeof propRef === "object" ? (propRef.value || propRef.id) : propRef;
@@ -125,7 +154,7 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
             propVal = typeof prop.NominalValue === "object" ? (prop.NominalValue.value ?? prop.NominalValue) : prop.NominalValue;
           }
 
-          if (propVal !== undefined) {
+          if (propName && propVal !== undefined) {
             const lowerName = String(propName).toLowerCase();
             if (lowerName === "level" || lowerName === "storey" || lowerName === "storeys" || lowerName.includes("buildingstorey") || lowerName === "referencelevel") {
               if (level === "N/A") level = String(propVal);
@@ -133,6 +162,11 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
             if (lowerName === "length") length = parseFloat(propVal) || length;
             else if (lowerName === "width") width = parseFloat(propVal) || width;
             else if (lowerName === "height") height = parseFloat(propVal) || height;
+
+            // Add dynamic property set key
+            const compositeKey = `${setName}.${propName}`;
+            dataRow[compositeKey] = propVal;
+            dynamicKeysSet.add(compositeKey);
           }
         }
       }
@@ -186,21 +220,17 @@ function extractBIMData(id: number, item: any, properties: any, elementStoreyMap
     scan(item);
   }
 
-  return {
-    id,
-    guid,
-    category,
-    family,
-    type,
-    length,
-    width,
-    height,
-    grossArea,
-    netArea,
-    grossVolume,
-    netVolume,
-    level
-  };
+  // Write finalized quantities back to dataRow
+  dataRow.length = length;
+  dataRow.width = width;
+  dataRow.height = height;
+  dataRow.grossArea = grossArea;
+  dataRow.netArea = netArea;
+  dataRow.grossVolume = grossVolume;
+  dataRow.netVolume = netVolume;
+  dataRow.level = level;
+
+  return dataRow;
 }
 
 export class PropertyTableModule {
@@ -222,12 +252,13 @@ export class PropertyTableModule {
 
   private maxVisibleRows = 100;
 
-  private readonly columnDefs: { key: ColumnKey; label: string }[] = [
+  private columnDefs: { key: ColumnKey; label: string }[] = [
     { key: "id", label: "ExpressID" },
     { key: "guid", label: "GlobalId" },
     { key: "category", label: "Class" },
     { key: "family", label: "Family" },
     { key: "type", label: "Type" },
+    { key: "material", label: "Material" },
     { key: "length", label: "Length" },
     { key: "width", label: "Width" },
     { key: "height", label: "Height" },
@@ -237,7 +268,7 @@ export class PropertyTableModule {
     { key: "netVolume", label: "NetVolume" },
     { key: "level", label: "Level" },
   ];
-  private visibleColumns = new Set<ColumnKey>(["id", "guid", "category", "length", "width", "height", "grossArea", "netArea", "grossVolume", "netVolume", "level"]);
+  private visibleColumns = new Set<ColumnKey>(["id", "guid", "category", "material", "length", "width", "height", "grossArea", "netArea", "grossVolume", "netVolume", "level"]);
   private isFullscreen = false;
   private prevStyle: { left: string; top: string; right: string; bottom: string; width: string; height: string } | null = null;
 
@@ -263,10 +294,15 @@ export class PropertyTableModule {
 
       // Build storey map using IfcRelContainedInSpatialStructure
       const elementStoreyMap = new Map<number, string>();
+      // Build material map using IfcRelAssociatesMaterial
+      const elementMaterialMap = new Map<number, string>();
+
       for (const key of Object.keys(properties)) {
         const obj = properties[key];
         if (obj) {
           const typeStr = String(obj.type || obj.ObjectType || "").toUpperCase();
+          
+          // Spatial Structure Containment
           if (typeStr.includes("RELCONTAINEDINSPATIALSTRUCTURE") || obj.type === 13123) {
             const relatedRef = obj.RelatedElements;
             const storeyRef = obj.RelatingStructure;
@@ -282,30 +318,88 @@ export class PropertyTableModule {
               }
             }
           }
+
+          // Material Assignment
+          if (typeStr.includes("RELASSOCIATESMATERIAL") || obj.type === 20982) {
+            const relatedRef = obj.RelatedObjects;
+            const materialRef = obj.RelatingMaterial;
+            if (relatedRef && materialRef) {
+              const materialId = typeof materialRef === "object" ? (materialRef.value || materialRef.id) : materialRef;
+              const material = properties[materialId];
+              
+              let materialName = "";
+              if (material) {
+                if (material.Name) {
+                  materialName = typeof material.Name === "object" ? material.Name.value : material.Name;
+                } else if (material.ForLayerSet) {
+                  const lsId = typeof material.ForLayerSet === "object" ? (material.ForLayerSet.value || material.ForLayerSet.id) : material.ForLayerSet;
+                  const layerSet = properties[lsId];
+                  if (layerSet && layerSet.LayerSetName) {
+                    materialName = typeof layerSet.LayerSetName === "object" ? layerSet.LayerSetName.value : layerSet.LayerSetName;
+                  }
+                }
+              }
+              
+              if (materialName) {
+                const elements = Array.isArray(relatedRef) ? relatedRef : [relatedRef];
+                for (const elRef of elements) {
+                  const elId = typeof elRef === "object" ? (elRef.value || elRef.id) : elRef;
+                  elementMaterialMap.set(Number(elId), String(materialName));
+                }
+              }
+            }
+          }
         }
       }
 
       const itemsMap = await model.getItems();
-      
+      const dynamicKeysSet = new Set<string>();
+
       for (const [id, item] of itemsMap.entries()) {
         const category = item.category || "Unknown";
         const isSpatial = ["IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY"].includes(category.toUpperCase());
         
         if (isSpatial) continue; // Exclude spatial hierarchy components
 
-        const dataRow = extractBIMData(id, item, properties, elementStoreyMap);
+        const dataRow = extractBIMData(id, item, properties, elementStoreyMap, elementMaterialMap, dynamicKeysSet);
         this.rawData.push(dataRow);
+      }
+
+      // Rebuild columnDefs dynamically including all custom Psets!
+      this.columnDefs = [
+        { key: "id", label: "ExpressID" },
+        { key: "guid", label: "GlobalId" },
+        { key: "category", label: "Class" },
+        { key: "family", label: "Family" },
+        { key: "type", label: "Type" },
+        { key: "material", label: "Material" },
+        { key: "length", label: "Length" },
+        { key: "width", label: "Width" },
+        { key: "height", label: "Height" },
+        { key: "grossArea", label: "GrossArea" },
+        { key: "netArea", label: "NetArea" },
+        { key: "grossVolume", label: "GrossVolume" },
+        { key: "netVolume", label: "NetVolume" },
+        { key: "level", label: "Level" },
+      ];
+
+      // Add all discovered dynamic Pset columns and enable them
+      const sortedDynKeys = [...dynamicKeysSet].sort((a, b) => a.localeCompare(b));
+      for (const key of sortedDynKeys) {
+        this.columnDefs.push({ key: key, label: key });
+        this.visibleColumns.add(key); // Automatically enable custom property set columns!
       }
 
       this.filteredData = [...this.rawData];
       this.sortData();
+      this.renderHeader(); // Redraw header to show new columns!
       this.renderTableRows();
 
     } catch (e) {
       console.error("Error populating property table:", e);
       this.tableBody.innerHTML = `
         <tr>
-          <td colspan="4" style="color: var(--accent-pink); text-align: center; padding: 12px; font-style: italic;">
+          <td colspan="14" style="color: var(--accent-pink); text-align: center; padding: 12px; font-style: italic;">
             Failed to load elements data.
           </td>
         </tr>
@@ -597,7 +691,7 @@ export class PropertyTableModule {
     this.renderTableRows();
   }
 
-  private handleSort(column: keyof TableRowData, headerEl: Element): void {
+  private handleSort(column: string, headerEl: Element): void {
     if (this.sortColumn === column) {
       this.sortAscending = !this.sortAscending;
     } else {
