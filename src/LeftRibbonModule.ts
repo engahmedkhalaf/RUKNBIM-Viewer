@@ -251,7 +251,8 @@ export class LeftRibbonModule {
     this.panelBody.innerHTML = "";
     const result = btn.build?.(this.panelBody, this.viewer);
     if (typeof result === "function") this.currentTeardown = result;
-    this.panel.style.width = "280px";
+    const panelWidth = btn.id === "models" ? "360px" : "280px";
+    this.panel.style.width = panelWidth;
     this.refreshActiveStyling();
   }
 
@@ -345,15 +346,15 @@ export class LeftRibbonModule {
         return;
       }
       const list = document.createElement("div");
-      Object.assign(list.style, { display: "flex", flexDirection: "column", gap: "8px" });
+      Object.assign(list.style, { display: "flex", flexDirection: "column", gap: "5px" });
 
       for (const [id, model] of models) {
         const row = document.createElement("div");
         Object.assign(row.style, {
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "10px",
+          gap: "6px",
+          padding: "5px 8px",
           background: "var(--bg-hover)",
           border: "1px solid var(--border-color)",
           borderRadius: "var(--radius-sm)",
@@ -366,11 +367,11 @@ export class LeftRibbonModule {
         };
         setEyeIcon();
         Object.assign(eye.style, {
-          width: "28px",
-          height: "28px",
+          width: "24px",
+          height: "24px",
           color: "var(--primary-purple)",
           cursor: "pointer",
-          fontSize: "13px",
+          fontSize: "11px",
           flexShrink: "0",
         });
         eye.addEventListener("click", () => {
@@ -389,17 +390,17 @@ export class LeftRibbonModule {
           whiteSpace: "nowrap",
         });
         label.innerText = model.name ?? id;
-        label.title = id;
+        label.title = model.name ?? id;
 
         const focus = document.createElement("button");
         focus.innerHTML = `<i class="fa-solid fa-crosshairs"></i>`;
         focus.title = "Focus on model";
         Object.assign(focus.style, {
-          width: "28px",
-          height: "28px",
+          width: "24px",
+          height: "24px",
           color: "var(--primary-purple)",
           cursor: "pointer",
-          fontSize: "13px",
+          fontSize: "11px",
           flexShrink: "0",
         });
         focus.addEventListener("click", async () => {
@@ -414,11 +415,11 @@ export class LeftRibbonModule {
         remove.innerHTML = `<i class="fa-solid fa-trash"></i>`;
         remove.title = "Remove model";
         Object.assign(remove.style, {
-          width: "28px",
-          height: "28px",
+          width: "24px",
+          height: "24px",
           color: "#b91c1c",
           cursor: "pointer",
-          fontSize: "13px",
+          fontSize: "11px",
           flexShrink: "0",
         });
         remove.addEventListener("click", async () => {
