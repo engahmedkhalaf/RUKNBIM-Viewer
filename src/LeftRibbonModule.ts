@@ -385,9 +385,8 @@ export class LeftRibbonModule {
           flex: "1",
           fontSize: "12px",
           color: "var(--text-main)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          wordBreak: "break-all",
+          lineHeight: "1.3",
         });
         label.innerText = model.name ?? id;
         label.title = model.name ?? id;
