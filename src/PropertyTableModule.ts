@@ -374,7 +374,7 @@ export class PropertyTableModule {
 
       for (const [id, item] of itemsMap.entries()) {
         const category = item.category || "Unknown";
-        const isSpatial = ["IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY"].includes(category.toUpperCase());
+        const isSpatial = ["IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY", "IFCSPACE"].includes(category.toUpperCase());
         
         if (isSpatial) continue; // Exclude spatial hierarchy components
 

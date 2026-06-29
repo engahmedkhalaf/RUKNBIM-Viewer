@@ -144,7 +144,7 @@ export class TreeManager {
 
     const collectElements = (n: SpatialTreeItem, elementsList: SpatialTreeItem[]) => {
       const cat = (n.category || "").toUpperCase();
-      const isSpatial = ["IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY"].includes(cat);
+      const isSpatial = ["IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY", "IFCSPACE"].includes(cat);
       if (n.localId !== null && !isSpatial) {
         elementsList.push(n);
       }
