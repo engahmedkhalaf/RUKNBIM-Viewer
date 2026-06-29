@@ -6,11 +6,12 @@ export type SelectionSource = "click" | "contextmenu" | "tree" | "api";
 
 export class SelectionManager {
   private components: OBC.Components;
-  private highlighter: OBCF.Highlighter;
+  public highlighter: OBCF.Highlighter;
   private pendingSource: SelectionSource = "click";
 
   public onSelectionChanged: (modelId: string, elementId: number, source: SelectionSource) => void = () => {};
   public onSelectionCleared: () => void = () => {};
+  public onRightClick: (x: number, y: number, modelId: string, elementId: number) => void = () => {};
 
   constructor(components: OBC.Components) {
     this.components = components;
@@ -93,6 +94,7 @@ export class SelectionManager {
         const localId: number | undefined = best.hit.localId ?? best.hit.itemId;
         if (typeof localId === "number" && typeof best.modelId === "string") {
           this.selectElement(best.modelId, localId, false, "contextmenu");
+          this.onRightClick(e.clientX, e.clientY, best.modelId, localId);
         }
       } catch (err) {
         console.warn("[Selection] right-click pick failed:", err);

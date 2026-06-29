@@ -197,8 +197,14 @@ button {
 
 /* Typography Helpers */
 h1, h2, h3, h4, h5, h6 {
+  margin: 0;
   font-family: var(--font-title);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text-bright);
+  color: var(--text-main);
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 10px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
 }

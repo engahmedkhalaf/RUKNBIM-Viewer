@@ -5,6 +5,7 @@ import { IFCLoaderModule } from "./IFCLoaderModule";
 import { PerformanceMonitor } from "./PerformanceMonitor";
 import { PropertiesPanelModule } from "./PropertiesPanelModule";
 import { PropertyTableModule } from "./PropertyTableModule";
+import { ContextMenuModule } from "./ContextMenuModule";
 
 export class IFCViewer {
   public components: OBC.Components;
@@ -19,6 +20,7 @@ export class IFCViewer {
   public performanceMonitor!: PerformanceMonitor;
   public propertiesPanel!: PropertiesPanelModule;
   public propertyTable!: PropertyTableModule;
+  public contextMenu!: ContextMenuModule;
 
   constructor(container: HTMLDivElement) {
     this.container = container;
@@ -53,10 +55,18 @@ export class IFCViewer {
     // 5. Initialize the spreadsheet element property table UI
     this.propertyTable = new PropertyTableModule(this.container, this.propertiesPanel.selectionManager);
 
-    // 6. Bind loader events to UI panels
+    // 6. Initialize the right-click context menu UI
+    this.contextMenu = new ContextMenuModule(this, this.container);
+
+    // Wire up right-click context menu interaction
+    this.propertiesPanel.selectionManager.onRightClick = (x, y, modelId, elementId) => {
+      this.contextMenu.show(x, y, modelId, elementId);
+    };
+
+    // 7. Bind loader events to UI panels
     this.setupIntegrationEvents();
 
-    // 7. Bind double middle-click (wheel double-click) to zoom extents
+    // 8. Bind double middle-click (wheel double-click) to zoom extents
     this.bindMiddleDoubleClick();
 
     this._isInitialized = true;
