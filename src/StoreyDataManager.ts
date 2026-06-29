@@ -23,41 +23,20 @@ export class StoreyDataManager {
     const storeyNodes: SpatialTreeItem[] = [];
     this.findStoreyNodes(root, storeyNodes);
 
-    // Batch-fetch all storey attributes in one call (fragments 3.x rich API).
     const validNodes = storeyNodes.filter((n) => n.localId !== null && n.localId !== undefined);
-    const ids = validNodes.map((n) => n.localId as number);
-
-    let datas: any[] = [];
-    if (ids.length > 0) {
-      try {
-        if (typeof model.getItemsData === "function") {
-          const result = await model.getItemsData(ids, {
-            attributesDefault: true,
-            relationsDefault: { attributes: false, relations: false },
-          });
-          if (Array.isArray(result)) datas = result;
-        }
-        // Fallback to raw API if rich one yielded nothing
-        if (datas.length === 0 && typeof model.getItems === "function") {
-          const raw = await model.getItems(ids);
-          datas = ids.map((id) => raw?.get?.(id));
-        }
-      } catch (e) {
-        console.warn("Could not fetch storey properties:", e);
-      }
-    }
+    const properties = model.properties || {};
 
     const storeysList: StoreyInfo[] = [];
-    for (let i = 0; i < validNodes.length; i++) {
-      const node = validNodes[i];
-      const data = datas[i];
+    for (const node of validNodes) {
+      const id = node.localId as number;
+      const data = properties[id];
       const elementIds = this.getDescendantElementIds(node);
 
-      const name = this.readName(data) ?? `Level [${node.localId}]`;
+      const name = this.readName(data) ?? `Level [${id}]`;
       const elevation = this.readElevation(data);
 
       storeysList.push({
-        id: node.localId as number,
+        id,
         name,
         elevation,
         elementIds,

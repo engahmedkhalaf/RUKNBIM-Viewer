@@ -147,12 +147,31 @@ button {
   box-shadow: 0 6px 20px -6px rgba(20, 42, 85, 0.45);
 }
 
+.btn-outline {
+  background: rgba(31, 58, 110, 0.04);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-title);
+  font-weight: 600;
+  box-shadow: none;
+  transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+  background: rgba(31, 58, 110, 0.08);
+  border-color: var(--primary-purple);
+  color: var(--primary-purple);
+  transform: translateY(-1px);
+}
+
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 28px -8px rgba(20, 42, 85, 0.55);
 }
 
-.btn-primary:active {
+.btn-primary:active, .btn-outline:active {
   transform: translateY(0);
 }
 

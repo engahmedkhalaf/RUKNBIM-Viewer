@@ -214,16 +214,16 @@ export class PropertiesPanelModule {
           <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 10px;">
             <span style="font-family: var(--font-title); font-weight: 700; font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">GEOMETRY EXPORTS</span>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-              <button class="export-btn btn-primary" data-format="frag" style="padding: 8px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <button class="export-btn btn-outline" data-format="frag" style="padding: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 <i class="fa-solid fa-download"></i> .frag
               </button>
-              <button class="export-btn btn-primary" data-format="gltf" style="padding: 8px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <button class="export-btn btn-outline" data-format="gltf" style="padding: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 <i class="fa-solid fa-download"></i> .gltf
               </button>
-              <button class="export-btn btn-primary" data-format="glb" style="padding: 8px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <button class="export-btn btn-outline" data-format="glb" style="padding: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 <i class="fa-solid fa-download"></i> .glb
               </button>
-              <button class="export-btn btn-primary" data-format="usdz" style="padding: 8px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <button class="export-btn btn-outline" data-format="usdz" style="padding: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 <i class="fa-solid fa-download"></i> .usdz
               </button>
             </div>
@@ -231,7 +231,7 @@ export class PropertiesPanelModule {
 
           <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 10px;">
             <span style="font-family: var(--font-title); font-weight: 700; font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">DATA & MEDIA</span>
-            <button class="export-btn btn-primary" data-format="json" style="padding: 8px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%;">
+            <button class="export-btn btn-outline" data-format="json" style="padding: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%;">
               <i class="fa-solid fa-file-lines"></i> Export JSON Properties
             </button>
             <button id="panel-screenshot-btn" class="btn-primary" style="padding: 8px; font-size: 11px; background: var(--purple-gradient); color: var(--text-bright); display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; margin-top: 4px;">
