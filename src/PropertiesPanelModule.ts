@@ -98,13 +98,15 @@ export class PropertiesPanelModule {
    */
   public async setActiveModel(modelId: string, model: any): Promise<void> {
     this.activeModelId = modelId;
-    this.clearUI();
+    this.propertyDisplayManager.clear();
+    this.activeElementId = null;
 
     // 1. Load spatial tree
     try {
       const spatialTree = await model.getSpatialStructure();
       if (spatialTree) {
-        this.treeManager.render(modelId, spatialTree, model);
+        // Add to the combined multi-model tree
+        await this.treeManager.addModel(modelId, spatialTree, model);
         
         // 2. Load storey data
         const storeys = await this.storeyDataManager.getStoreys(modelId, model, spatialTree);
@@ -112,6 +114,17 @@ export class PropertiesPanelModule {
       }
     } catch (e) {
       console.error("Error populating model properties panel data:", e);
+    }
+  }
+
+  /**
+   * Removes a model from the properties panel and tree hierarchy.
+   */
+  public removeModel(modelId: string): void {
+    this.treeManager.removeModel(modelId);
+    if (this.activeModelId === modelId) {
+      this.activeModelId = null;
+      this.clearUI();
     }
   }
 

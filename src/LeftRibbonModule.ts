@@ -477,6 +477,7 @@ export class LeftRibbonModule {
         });
         remove.addEventListener("click", async () => {
           await viewer.loader.unloadModel(id);
+          viewer.propertiesPanel.removeModel(id);
           render();
         });
 
